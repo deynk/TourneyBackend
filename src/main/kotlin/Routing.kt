@@ -1,13 +1,11 @@
 package com.example
 
-import io.ktor.http.ContentType
+import com.example.entities.Participant
+import com.example.entities.Tournament
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.resources.*
 import io.ktor.server.resources.*
-import io.ktor.server.resources.Resources
-import kotlinx.serialization.Serializable
 
 // https://ktor.io/docs/server-create-a-new-project.html#configure-static-content
 fun Application.configureRouting() {
@@ -22,10 +20,22 @@ fun Application.configureRouting() {
         get("/json/kotlinx-serialization") {
             call.respond(mapOf("hello" to "world"))
         }
-        get("/test1") {
-            val text = "<h1>Hello From Ktor</h1>"
-            val type = ContentType.parse("text/html")
-            call.respondText(text, type)
+        get("/tournament") {
+            val tournament = Tournament(
+                1L,
+                "My tournament",
+                "My game",
+                1L,
+                "Dani",
+                MutableList<Participant>(1){ Participant(2L, 2L, "Dani", 3f) },
+                32,
+                null,
+                "Ubicación",
+                "Premio",
+                123
+            )
+
+            call.respond(tournament)
         }
     }
 }

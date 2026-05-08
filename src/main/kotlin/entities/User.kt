@@ -1,10 +1,5 @@
-package com.example.tourney.entities
+package com.example.entities
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
-import kotlinx.parcelize.TypeParceler
-
-@Parcelize
 data class User (
     var id: Long,
     var nickname: String,
@@ -15,7 +10,7 @@ data class User (
     var followingTournamentList: MutableList<Long> = mutableListOf(),
     var joinedTournamentList: MutableList<Long> = mutableListOf()
     //var adminTournamentList: MutableList<Long> = mutableListOf()
-): Parcelable{
+){
     fun addShowableTournament(id: Long){ showableTournamentList.add(id) }
     fun addFollowingTournament(id: Long){ followingTournamentList.add(id) }
     fun addJoinedTournament(id: Long){ joinedTournamentList.add(id) }
@@ -25,11 +20,5 @@ data class User (
     fun hasShowableTournament(id: Long): Boolean{ return showableTournamentList.contains(id) }
     fun setShowableTournamentList(stringList: String){
         showableTournamentList = stringList.split(",").map { it.trim().toLong() }.toMutableList()
-    }
-
-
-    // Usuario actual
-    companion object{
-        var actualUser: User? = null
     }
 }

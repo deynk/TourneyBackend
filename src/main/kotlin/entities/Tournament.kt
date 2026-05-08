@@ -1,17 +1,12 @@
-package com.example.tourney.entities
+package com.example.entities
 
-import android.content.Context
-import android.os.Parcelable
-import android.widget.Toast
-import com.example.tourney.models.EliminationTournamentFormat
-import com.example.tourney.models.LiguillaTournamentFormat
-import com.example.tourney.models.SuizoTournamentFormat
+import com.example.models.EliminationTournamentFormat
+import com.example.models.LiguillaTournamentFormat
+import com.example.models.SuizoTournamentFormat
 import com.example.tourney.models.TournamentFormat
-import com.ventura.bracketslib.model.ColomnData
-import com.ventura.bracketslib.model.CompetitorData
-import com.ventura.bracketslib.model.MatchData
-import kotlinx.parcelize.IgnoredOnParcel
-import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
+
 
 enum class TournamentStatus {
     EDITABLE,
@@ -25,8 +20,7 @@ enum class TournamentType {
     SUIZO,
     OTRO
 }
-
-@Parcelize
+@Serializable
 data class Tournament(
     var id: Long,
     var name: String,
@@ -44,10 +38,9 @@ data class Tournament(
     var thumbnail: Int = 0,
 
     var matches: MutableList<TournamentMatch> = mutableListOf()
-) : Parcelable {
-    @IgnoredOnParcel
+){
     var columnMatches: MutableList<ColomnData> = mutableListOf()
-    @IgnoredOnParcel
+
     private var notDead: MutableList<CompetitorData> = mutableListOf()
 
     val numParticipants: Int
@@ -155,16 +148,18 @@ data class Tournament(
         val flatMatches = mutableListOf<TournamentMatch>()
         columnMatches.forEachIndexed { roundIndex, column ->
             column.matches.forEach { m ->
-                flatMatches.add(TournamentMatch(
-                    tournamentId = this.id,
-                    roundNumber = roundIndex,
-                    participantOneName = m.competitorOne.name,
-                    participantTwoName = m.competitorTwo.name,
-                    scoreOne = m.competitorOne.score,
-                    scoreTwo = m.competitorTwo.score,
-                    participantOneId = participantList.find { it.nickname == m.competitorOne.name }?.userId,
-                    participantTwoId = participantList.find { it.nickname == m.competitorTwo.name }?.userId
-                ))
+                flatMatches.add(
+                    TournamentMatch(
+                        tournamentId = this.id,
+                        roundNumber = roundIndex,
+                        participantOneName = m.competitorOne.name,
+                        participantTwoName = m.competitorTwo.name,
+                        scoreOne = m.competitorOne.score,
+                        scoreTwo = m.competitorTwo.score,
+                        participantOneId = participantList.find { it.nickname == m.competitorOne.name }?.userId,
+                        participantTwoId = participantList.find { it.nickname == m.competitorTwo.name }?.userId
+                    )
+                )
             }
         }
         this.matches = flatMatches
@@ -230,9 +225,9 @@ data class Tournament(
         initMatches()
     }
 
-    fun nextRound(context: Context?) : Boolean {
+    fun nextRound() : Boolean {
         updateMatchesFromView()
-        val success = getFormat().nextRound(this, context)
+        val success = getFormat().nextRound(this)
         updateMatchesFromView()
         return success
     }
@@ -243,15 +238,15 @@ data class Tournament(
     fun setNotDead(notDead: MutableList<CompetitorData>){ this.notDead = notDead }
 
     fun setStatusEditable(){ tournamentStatus = TournamentStatus.EDITABLE }
-    fun setStatusInProgress(context: Context?){
+    fun setStatusInProgress(){
         tournamentStatus = TournamentStatus.IN_PROGRESS
-        if(context != null)
-            Toast.makeText(context, "Torneo iniciado", Toast.LENGTH_SHORT).show()
+        /*if(context != null)
+            Toast.makeText(context, "Torneo iniciado", Toast.LENGTH_SHORT).show()*/
     }
-    fun setStatusFinished(context: Context?){
+    fun setStatusFinished(){
         tournamentStatus = TournamentStatus.FINISHED
-        if(context != null)
-            Toast.makeText(context, "Torneo finalizado", Toast.LENGTH_SHORT).show()
+        /*if(context != null)
+            Toast.makeText(context, "Torneo finalizado", Toast.LENGTH_SHORT).show()*/
     }
 
     fun removeParticipantAtPosition(position: Int){

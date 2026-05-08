@@ -1,11 +1,8 @@
-package com.example.tourney.entities
+package com.example.entities
 
-// C:/Users/Dani/Desktop/Tourney/app/src/main/java/com/example/tourney/entities/TournamentMatch.kt
+import kotlinx.serialization.Serializable
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
-
-@Parcelize
+@Serializable
 data class TournamentMatch(
     var id: Long = 0,
     var tournamentId: Long,
@@ -17,4 +14,4 @@ data class TournamentMatch(
     var scoreOne: String = "0",
     var scoreTwo: String = "0",
     var winnerId: Long? = null
-) : Parcelable
+)
