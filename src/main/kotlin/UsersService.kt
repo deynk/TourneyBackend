@@ -1,21 +1,34 @@
 package com.example
 
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.singleOrNull
+import com.example.models.UserModel
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.v1.core.*
-import org.jetbrains.exposed.v1.core.dao.id.UIntIdTable
-import org.jetbrains.exposed.v1.r2dbc.*
-import org.jetbrains.exposed.v1.r2dbc.transactions.suspendTransaction
-import org.jetbrains.exposed.v1.r2dbc.R2dbcDatabase
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.update
 
 @Serializable
-data class ExposedUser(val name: String, val age: Int)
+data class NewUserModel(
+    val nickname: String,
+    val email: String,
+    val passwordHash: String,
+    val photo: Int
+)
 
-class ExposedUserService(val database: R2dbcDatabase) {
-    object Users : UIntIdTable() {
-        val name = varchar("name", length = 50)
-        val age = integer("age")
+class ExposedUserService(val database: Database) {
+    object Users : Table() {
+        val id = integer("id").autoIncrement()
+        val nickname = varchar("nickname", 255)
+        val email = varchar("email", 255)
+        val passwordHash = varchar("password_hash", 255)
+        val photo = integer("photo")
+
+        override val primaryKey = PrimaryKey(id)
     }
 
     suspend fun createSchema() {
@@ -24,33 +37,45 @@ class ExposedUserService(val database: R2dbcDatabase) {
         }
     }
 
-    suspend fun create(user: ExposedUser): UInt = suspendTransaction(database) {
+    suspend fun create(user: NewUserModel): Int = suspendTransaction(database) {
         val newRecord = Users.insert {
-            it[name] = user.name
-            it[age] = user.age
+            it[nickname] = user.nickname
+            it[email] = user.email
+            it[passwordHash] = user.passwordHash
+            it[photo] = user.photo
         }
-        newRecord[Users.id].value
+        newRecord[Users.id]
     }
 
-    suspend fun read(id: UInt): ExposedUser? {
+    suspend fun findUser(email: String): UserModel? = suspendTransaction(database) {
+        // TODO: Arreglar esto
+        //val result = Users.select{ Users.email eq email }.firstOrNull()
+        val resultt = Users.selectAll().where { Users.email eq email }.singleOrNull().
+    }
+
+    suspend fun read(id: Int): NewUserModel? {
         return suspendTransaction(database) {
             Users.selectAll()
                 .where { Users.id eq id }
-                .map { ExposedUser(it[Users.name], it[Users.age]) }
+                .map { NewUserModel(
+                    //it[Users.id].toLong(),
+                    it[Users.nickname],
+                    it[Users.email],
+                    it[Users.passwordHash],
+                    it[Users.photo]) }
                 .singleOrNull()
         }
     }
 
-    suspend fun update(id: UInt, user: ExposedUser) {
+    suspend fun update(id: Int, user: NewUserModel) {
         suspendTransaction(database) {
             Users.update({ Users.id eq id }) {
-                it[name] = user.name
-                it[age] = user.age
+                it[nickname] = user.nickname
             }
         }
     }
 
-    suspend fun delete(id: UInt) {
+    suspend fun delete(id: Int) {
         suspendTransaction(database) { Users.deleteWhere { Users.id.eq(id) } }
     }
 

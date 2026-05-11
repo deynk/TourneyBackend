@@ -1,9 +1,6 @@
-package com.example.models
+package com.example.entities
 
-import com.example.entities.Tournament
 import com.example.tourney.models.TournamentFormat
-import com.example.entities.CompetitorData
-import com.example.entities.MatchData
 
 class LiguillaTournamentFormat : TournamentFormat {
 

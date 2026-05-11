@@ -8,3 +8,4 @@ ktor:
       - com.example.ExposedKt.configureExposed
       - com.example.ResourcesKt.configureResources
       - com.example.RoutingKt.configureRouting
+      - com.example.AplicationKt.configureAuth

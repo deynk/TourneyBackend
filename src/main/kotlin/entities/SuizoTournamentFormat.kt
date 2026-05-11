@@ -1,11 +1,8 @@
-package com.example.models
+package com.example.entities
 
-import com.example.entities.Tournament
 import com.example.tourney.models.TournamentFormat
 import kotlin.math.ceil
 import kotlin.math.log2
-import com.example.entities.CompetitorData
-import com.example.entities.MatchData
 
 /**
  * Implementación del Formato de Torneo Suizo.

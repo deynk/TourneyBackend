@@ -1,10 +1,6 @@
 package com.example.entities
 
-import com.example.models.EliminationTournamentFormat
-import com.example.models.LiguillaTournamentFormat
-import com.example.models.SuizoTournamentFormat
 import com.example.tourney.models.TournamentFormat
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 

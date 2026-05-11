@@ -21,4 +21,7 @@ data class User (
     fun setShowableTournamentList(stringList: String){
         showableTournamentList = stringList.split(",").map { it.trim().toLong() }.toMutableList()
     }
+
+    fun getUserModel(){
+    }
 }
