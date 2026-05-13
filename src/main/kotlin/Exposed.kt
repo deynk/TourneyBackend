@@ -1,34 +1,45 @@
 package com.example
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
 import com.example.models.LoginModel
+import com.example.models.LoginResponse
+import com.example.models.NewUserModel
+import com.example.models.RememberPasswordModel
 import com.example.models.UserModel
-import com.example.values.Values
+import com.example.utils.Auth
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
+import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import io.ktor.server.routing.put
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import org.jetbrains.exposed.v1.jdbc.Database
-import java.util.Date
+import org.mindrot.jbcrypt.BCrypt
 
 suspend fun Application.configureExposed() {
-    val database = Database.connect(
-        url = Values().dbUrl,
-        driver = "org.mariadb.jdbc.Driver",
-        user = Values().dbUserName,
-        password = Values().dbUserPassword
-    )
-    val userService = ExposedUserService(database).also {
-        it.createSchema()
-    }
+    val database = DatabaseHelper().createConnection()
+    DatabaseHelper().createSchema(database)
+
+    val userService = UserService(database)
+    val tournamentService = TournamentService(database)
 
     routing {
+        authenticate("auth-jwt") {
+            get("/getUser") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asString()
+                if (userId != null) {
+                    val user = userService.findUserById(userId.toLong())
+                    if (user != null) {
+                        call.respond(user)
+                    }else call.respond(HttpStatusCode.NotFound)
+                }else{ call.respond(HttpStatusCode.Unauthorized) }
+            }
+        }
+
         // Create user
         post("/newUser") {
             val user = call.receive<NewUserModel>()
@@ -38,39 +49,83 @@ suspend fun Application.configureExposed() {
 
         post("/login"){
             val request = call.receive<LoginModel>()
+
+            val user = userService.findUserForLogin(request.email)
+            val matchPassword = BCrypt.checkpw(request.password, user?.passwordHashed)
+            if(user != null && matchPassword){
+                val token = Auth().generateToken(user.id)
+                call.respond(
+                    LoginResponse(
+                        token = token,
+                        user = UserModel(user.id, user.nickname, user.email, user.photo)
+                    )
+                )
+            }else {
+                call.respond(HttpStatusCode.Unauthorized)
+            }
         }
 
-        // Read user
-        /*get("/users/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
-            val user = userService.read(id)
-            if (user != null) {
-                call.respond(HttpStatusCode.OK, user)
-            } else {
-                call.respond(HttpStatusCode.NotFound)
+        post("/rememberPassword"){
+            val request = call.receive<RememberPasswordModel>()
+            val nicknameMatches = userService.getUserNicknameByEmail(request.email) == request.nickname
+            if(nicknameMatches) call.respond(HttpStatusCode.OK)
+            else call.respond(HttpStatusCode.NotFound)
+        }
+        post("/updatePassword"){
+            val request = call.receive<LoginModel>()
+            val passwordUpdated = userService.updatePassword(request.email, request.password)
+            if(passwordUpdated) call.respond(HttpStatusCode.OK)
+            else call.respond(HttpStatusCode.NotFound)
+        }
+
+        route("/user"){
+            authenticate("auth-jwt"){
+                get("/updateAvatar/{avatarId}"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val avatarId = call.parameters["avatarId"]?.toInt()
+
+                    if(userId == null) {
+                        call.respond(HttpStatusCode.NotFound)
+                        return@get
+                    }
+                    if(avatarId == null) {
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@get
+                    }
+                    val avatarUpdated = userService.updateAvatar(userId, avatarId)
+                    if(avatarUpdated) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.Conflict)
+                }
+
+                get("/getCreatedTournaments"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    if (userId != null) {
+                        val tournamentIdList = userService.getRelationsForUser(userId, "CREATED")
+                        val tournaments = tournamentService.getTournamentsById(tournamentIdList)
+                        call.respond(tournaments)
+                    }else call.respond(HttpStatusCode.NotFound)
+                }
+                get("/getJoinedTournaments"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    if (userId != null) {
+                        val tournamentIdList = userService.getRelationsForUser(userId, "JOINED")
+                        val tournaments = tournamentService.getTournamentsById(tournamentIdList)
+                        call.respond(tournaments)
+                    }else call.respond(HttpStatusCode.NotFound)
+                }
+                get("/getFollowingTournaments"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    if (userId != null) {
+                        val tournamentIdList = userService.getRelationsForUser(userId, "FOLLOWING")
+                        val tournaments = tournamentService.getTournamentsById(tournamentIdList)
+                        call.respond(tournaments)
+                    }else call.respond(HttpStatusCode.NotFound)
+                }
             }
-        }*/
-
-        // Update user
-        /*put("/users/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
-            val user = call.receive<NewUserModel>()
-            userService.update(id, user)
-            call.respond(HttpStatusCode.NoContent)
-        }*/
-
-        // Delete user
-        /*delete("/users/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
-            userService.delete(id)
-            call.respond(HttpStatusCode.NoContent)
-        }*/
-
-        fun generateToken(email: String): String {
-            return JWT.create()
-                .withClaim("email", email)
-                .withExpiresAt(Date(System.currentTimeMillis() + 172800000)) // 2 días
-                .sign(Algorithm.HMAC256(Values().secretKey))
         }
     }
 }

@@ -3,13 +3,13 @@ package com.example.entities
 import com.example.tourney.models.TournamentFormat
 import kotlinx.serialization.Serializable
 
-
+@Serializable
 enum class TournamentStatus {
     EDITABLE,
     FINISHED,
     IN_PROGRESS
 }
-
+@Serializable
 enum class TournamentType {
     ELIMINATION,
     LIGUILLA,
@@ -26,9 +26,9 @@ data class Tournament(
     var participantList: MutableList<Participant> = mutableListOf(),
     var maxParticipants: Int,
     var date: Long?,
-    var location: String,
-    var prize: String,
-    var code: Int,
+    var location: String?,
+    var prize: String?,
+    var code: Int?,
     var type: TournamentType = TournamentType.ELIMINATION,
     var tournamentStatus: TournamentStatus = TournamentStatus.EDITABLE,
     var thumbnail: Int = 0,
@@ -278,6 +278,22 @@ data class Tournament(
                 "Liguilla" -> TournamentType.LIGUILLA
                 "Suizo" -> TournamentType.SUIZO
                 else -> TournamentType.OTRO
+            }
+        }
+
+        fun getTournamentStatusString(type: TournamentStatus): String {
+            return when (type) {
+                TournamentStatus.EDITABLE -> "EDITABLE"
+                TournamentStatus.IN_PROGRESS -> "IN_PROGRESS"
+                TournamentStatus.FINISHED -> "FINISHED"
+            }
+        }
+
+        fun getTournamentStatusFromString(type: String): TournamentStatus {
+            return when (type) {
+                "EDITABLE" -> TournamentStatus.EDITABLE
+                "IN_PROGRESS" -> TournamentStatus.IN_PROGRESS
+                else -> TournamentStatus.FINISHED
             }
         }
     }

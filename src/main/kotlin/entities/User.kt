@@ -1,10 +1,21 @@
 package com.example.entities
 
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class UserResponse (
+    var id: Long,
+    var nickname: String,
+    var email: String,
+    var photo: Int
+    //var adminTournamentList: MutableList<Long> = mutableListOf()
+)
+
+
 data class User (
     var id: Long,
     var nickname: String,
     var email: String,
-    var password: String,
     var photo: Int,
     var showableTournamentList: MutableList<Long> = mutableListOf(),
     var followingTournamentList: MutableList<Long> = mutableListOf(),
@@ -22,6 +33,10 @@ data class User (
         showableTournamentList = stringList.split(",").map { it.trim().toLong() }.toMutableList()
     }
 
-    fun getUserModel(){
-    }
+    fun User.toResponse() = UserResponse(
+        id = id,
+        nickname = nickname,
+        email = email,
+        photo = photo,
+    )
 }

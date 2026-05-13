@@ -8,6 +8,7 @@ import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
+import io.ktor.server.routing.routing
 
 fun Application.configureAuth() {
     install(Authentication) {
@@ -21,7 +22,7 @@ fun Application.configureAuth() {
             )
 
             validate { credential ->
-                if (credential.payload.getClaim("email").asString() != "") {
+                if (credential.payload.getClaim("userId").asString() != "") {
                     JWTPrincipal(credential.payload)
                 } else {
                     null

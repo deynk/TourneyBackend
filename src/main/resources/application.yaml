@@ -4,8 +4,8 @@ ktor:
   application:
     modules:
       - com.example.SerializationKt.configureSerialization
+      - com.example.AplicationKt.configureAuth
       - com.example.StatusPagesKt.configureStatusPages
       - com.example.ExposedKt.configureExposed
       - com.example.ResourcesKt.configureResources
       - com.example.RoutingKt.configureRouting
-      - com.example.AplicationKt.configureAuth
