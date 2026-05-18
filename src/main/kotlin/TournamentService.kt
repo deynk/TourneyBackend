@@ -18,12 +18,11 @@ import com.example.DatabaseHelper.Tournaments.thumbnail
 import com.example.DatabaseHelper.Tournaments.type
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 
 class TournamentService(val database: Database) {
     fun getTournamentById(tournamentId: Long): Tournament? {
-        return Tournaments.selectAll().where{ Tournaments.id eq tournamentId.toInt() }.firstOrNull()?.toTournament();
+        return Tournaments.selectAll().where{ Tournaments.id eq tournamentId }.firstOrNull()?.toTournament();
     }
     fun getTournamentsById(tournamentIds: List<Long>): List<Tournament> {
         val tournaments = mutableListOf<Tournament>()
@@ -34,10 +33,10 @@ class TournamentService(val database: Database) {
 
     fun ResultRow.toTournament(): Tournament {
         return Tournament(
-            id = this[id].toLong(),
+            id = this[id],
             name = this[name],
             game = this[game],
-            creatorId = this[creatorId].toLong(),
+            creatorId = this[creatorId],
             creatorNickname = this[creatorNickname],
             maxParticipants = this[maxParticipants],
             date = this[date],

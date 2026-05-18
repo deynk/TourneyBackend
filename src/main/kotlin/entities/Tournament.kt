@@ -21,7 +21,7 @@ data class Tournament(
     var id: Long,
     var name: String,
     var game: String,
-    var creatorId: Long,
+    var creatorId: Long?,
     var creatorNickname: String,
     var participantList: MutableList<Participant> = mutableListOf(),
     var maxParticipants: Int,

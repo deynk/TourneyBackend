@@ -10,7 +10,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 class DatabaseHelper {
     // Tables
     object Users : Table() {
-        val id = integer("id").autoIncrement()
+        val id = long("id").autoIncrement()
         val nickname = varchar("nickname", 255)
         val email = varchar("email", 255)
         val passwordHash = varchar("password_hash", 255)
@@ -20,10 +20,10 @@ class DatabaseHelper {
     }
 
     object Tournaments : Table() {
-        val id = integer("id").autoIncrement()
+        val id = long("id").autoIncrement()
         val name = varchar("name", 255)
         val game = varchar("game", 255)
-        val creatorId = reference("creator_id", Users.id, onDelete = ReferenceOption.SET_NULL)
+        val creatorId = reference("creator_id", Users.id, onDelete = ReferenceOption.SET_NULL).nullable()
         val creatorNickname = varchar("creator_nickname", 255)
         val maxParticipants = integer("max_participants")
         val date = long("date").nullable()
@@ -38,7 +38,7 @@ class DatabaseHelper {
     }
 
     object Participants : Table() {
-        val id = integer("id").autoIncrement()
+        val id = long("id").autoIncrement()
         val tournamentId = reference("trn_id", Tournaments.id, onDelete = ReferenceOption.CASCADE).nullable()
         val userId = reference("user_id", Users.id, onDelete = ReferenceOption.SET_NULL).nullable()
         val nickname = varchar("nickname", 255).nullable()
@@ -48,16 +48,16 @@ class DatabaseHelper {
     }
 
     object Matches : Table() {
-        val id = integer("id").autoIncrement()
+        val id = long("id").autoIncrement()
         val tournamentId = reference("trn_id", Tournaments.id, onDelete = ReferenceOption.CASCADE).nullable()
         val round = integer("round").nullable()
-        val player1Id = integer("p1_id").nullable()
-        val player2Id = integer("p2_id").nullable()
+        val player1Id = long("p1_id").nullable()
+        val player2Id = long("p2_id").nullable()
         val player1Name = varchar("p1_name", 255).nullable()
         val player2Name = varchar("p2_name", 255).nullable()
         val score1 = varchar("score1", 255).nullable()
         val score2 = varchar("score2", 255).nullable()
-        val winnerId = integer("winner_id").nullable()
+        val winnerId = long("winner_id").nullable()
 
         override val primaryKey = PrimaryKey(id)
     }
@@ -86,6 +86,18 @@ class DatabaseHelper {
             SchemaUtils.create(Participants)
             SchemaUtils.create(Matches)
             SchemaUtils.create(UserTrnRelations)
+        }
+    }
+
+    suspend fun dropSchema(database: Database) {
+        suspendTransaction(database) {
+            SchemaUtils.drop(
+                UserTrnRelations,
+                Matches,
+                Participants,
+                Tournaments,
+                Users
+            )
         }
     }
 }

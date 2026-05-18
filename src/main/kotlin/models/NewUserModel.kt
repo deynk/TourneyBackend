@@ -6,6 +6,6 @@ import kotlinx.serialization.Serializable
 data class NewUserModel(
     val nickname: String,
     val email: String,
-    val passwordHash: String,
+    val password: String,
     val photo: Int
 )
