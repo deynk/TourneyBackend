@@ -9,7 +9,7 @@ class Auth {
     fun generateToken(userId: Long): String {
         return JWT.create()
             .withClaim("userId", userId)
-            .withExpiresAt(Date(System.currentTimeMillis() + Values().expirationTimeToken))
+            .withExpiresAt(Date(System.currentTimeMillis() + Values().expirationTimeToken.toLong()))
             .sign(Algorithm.HMAC256(Values().secretKey))
     }
 }
