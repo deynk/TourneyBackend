@@ -1,6 +1,7 @@
 package com.example
 
 import com.example.DatabaseHelper.*
+import com.example.models.EmailAndNickname
 import com.example.models.NewUserModel
 import com.example.models.UserModel
 import com.example.models.UserVerificationModel
@@ -13,9 +14,11 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.slf4j.LoggerFactory
 
 
 class UserService(val database: Database) {
+    private val log = LoggerFactory.getLogger("MiEndpoint")
     suspend fun create(user: NewUserModel): Long = suspendTransaction(database) {
         if (Users.select(Users.email eq user.email).count() > 0) {
             return@suspendTransaction -1L
@@ -44,7 +47,31 @@ class UserService(val database: Database) {
         UserTrnRelations.selectAll().where {
                 (UserTrnRelations.userId eq userId) and (UserTrnRelations.type eq type)
             }
-            .map { it[UserTrnRelations.tournamentId].toLong() }
+            .map { it[UserTrnRelations.tournamentId]}
+    }
+
+    suspend fun addTournamentRelation(userId: Long, tournamentId: Long, type: String): Boolean = suspendTransaction(database) {
+        val relationExists = UserTrnRelations.selectAll().where {
+            (UserTrnRelations.userId eq userId) and
+                    (UserTrnRelations.tournamentId eq tournamentId) and
+                    (UserTrnRelations.type eq type)
+        }.any()
+
+        if (relationExists) return@suspendTransaction true
+
+        UserTrnRelations.insert {
+            it[UserTrnRelations.userId] = userId
+            it[UserTrnRelations.tournamentId] = tournamentId
+            it[UserTrnRelations.type] = type
+        }.insertedCount > 0
+    }
+
+    suspend fun removeTournamentRelation(userId: Long, tournamentId: Long, type: String): Boolean = suspendTransaction(database) {
+        UserTrnRelations.deleteWhere {
+            (UserTrnRelations.userId eq userId) and
+                    (UserTrnRelations.tournamentId eq tournamentId) and
+                    (UserTrnRelations.type eq type)
+        } > 0
     }
 
     suspend fun checkPassword(userId: Long, password: String): Boolean = suspendTransaction(database){
@@ -68,9 +95,37 @@ class UserService(val database: Database) {
         updatedRows > 0 // true si se actualizó al menos un registro
     }
 
+    /**
+     * Returns if an email is available. True, the email is available. False, otherwise.
+     */
+    suspend fun checkEmailAvailable(email: String): Boolean = suspendTransaction(database){
+        Users.select(Users.email eq email).none()
+    }
+    suspend fun checkEmailAvailable(userId: Long, email: String): Boolean = suspendTransaction(database){
+        Users.selectAll().where { (Users.email eq email) and (Users.id neq userId) }.none()
+    }
+    suspend fun checkNicknameAvailable(nickname: String): Boolean = suspendTransaction(database){
+        Users.select(Users.nickname eq nickname).none()
+    }
+    suspend fun checkNicknameAvailable(userId: Long, nickname: String): Boolean = suspendTransaction(database){
+        Users.selectAll().where { (Users.nickname eq nickname) and (Users.id neq userId) }.none()
+    }
+
+    suspend fun editAccount(usersId: Long, emailAndNickname: EmailAndNickname): Int = suspendTransaction(database){
+        val email = emailAndNickname.email
+        val nickname = emailAndNickname.nickname
+
+        if(!checkEmailAvailable(usersId, email)) return@suspendTransaction 1
+        if(!checkNicknameAvailable(usersId, nickname)) return@suspendTransaction 2
+
+        Users.update({Users.id eq usersId}) { it[Users.email] = email }
+        Users.update({Users.id eq usersId}) { it[Users.nickname] = nickname }
+        return@suspendTransaction 0
+    }
+
     fun ResultRow.toUserVerificationModel(): UserVerificationModel {
         return UserVerificationModel(
-            id = this[Users.id].toLong(),
+            id = this[Users.id],
             nickname = this[Users.nickname],
             email = this[Users.email],
             passwordHashed = this[Users.passwordHash],
@@ -79,7 +134,7 @@ class UserService(val database: Database) {
     }
     fun ResultRow.toUserModel(): UserModel {
         return UserModel(
-            id = this[Users.id].toLong(),
+            id = this[Users.id],
             nickname = this[Users.nickname],
             email = this[Users.email],
             photo = this[Users.photo]
@@ -113,5 +168,4 @@ class UserService(val database: Database) {
     suspend fun delete(id: Long) {
         suspendTransaction(database) { Users.deleteWhere { Users.id.eq(id) } }
     }
-
 }

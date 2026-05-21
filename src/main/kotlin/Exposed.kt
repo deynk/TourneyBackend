@@ -1,10 +1,13 @@
 package com.example
 
+import com.example.entities.Participant
+import com.example.entities.TournamentModel
 import com.example.models.LoginModel
 import com.example.models.LoginResponse
 import com.example.models.NewUserModel
 import com.example.models.PasswordModel
-import com.example.models.RememberPasswordModel
+import com.example.models.EmailAndNickname
+import com.example.models.IdModel
 import com.example.models.UserModel
 import com.example.utils.Auth
 import com.example.utils.Security
@@ -17,6 +20,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 
@@ -31,9 +35,9 @@ suspend fun Application.configureExposed() {
         authenticate("auth-jwt") {
             get("/getUser") {
                 val principal = call.principal<JWTPrincipal>()
-                val userId = principal?.payload?.getClaim("userId")?.asString()
+                val userId = principal?.payload?.getClaim("userId")?.asLong()
                 if (userId != null) {
-                    val user = userService.findUserById(userId.toLong())
+                    val user = userService.findUserById(userId)
                     if (user != null) {
                         call.respond(user)
                     }else call.respond(HttpStatusCode.NotFound)
@@ -68,7 +72,7 @@ suspend fun Application.configureExposed() {
         }
 
         post("/rememberPassword"){
-            val request = call.receive<RememberPasswordModel>()
+            val request = call.receive<EmailAndNickname>()
             val nicknameMatches = userService.getUserNicknameByEmail(request.email) == request.nickname
             if(nicknameMatches) call.respond(HttpStatusCode.OK)
             else call.respond(HttpStatusCode.NotFound)
@@ -114,6 +118,23 @@ suspend fun Application.configureExposed() {
                     if(passwordUpdated) call.respond(HttpStatusCode.OK)
                     else call.respond(HttpStatusCode.NotFound)
                 }
+                post("/editAccount"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val emailAndNickname = call.receive<EmailAndNickname>()
+
+                    if(userId == null){
+                        call.respond(HttpStatusCode.NotFound)
+                        return@post
+                    }
+
+                    val result = userService.editAccount(userId, emailAndNickname)
+                    when (result) {
+                        0 -> call.respond(HttpStatusCode.OK)
+                        1 -> call.respond(HttpStatusCode.Conflict)
+                        else -> call.respond(HttpStatusCode.BadRequest)
+                    }
+                }
                 get("/updateAvatar/{avatarId}"){
                     val principal = call.principal<JWTPrincipal>()
                     val userId = principal?.payload?.getClaim("userId")?.asLong()
@@ -158,6 +179,163 @@ suspend fun Application.configureExposed() {
                         val tournaments = tournamentService.getTournamentsById(tournamentIdList)
                         call.respond(tournaments)
                     }else call.respond(HttpStatusCode.NotFound)
+                }
+
+                post("/followTournament/{id}"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+
+                    if(userId == null || tournamentId == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    if(tournamentService.getTournamentById(tournamentId) == null){
+                        call.respond(HttpStatusCode.NotFound)
+                        return@post
+                    }
+
+                    if(userService.addTournamentRelation(userId, tournamentId, "FOLLOWING")) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.Conflict)
+                }
+
+                post("/unfollowTournament/{id}"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+
+                    if(userId == null || tournamentId == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    if(userService.removeTournamentRelation(userId, tournamentId, "FOLLOWING")) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.NotFound)
+                }
+
+                post("/joinTournament/{id}"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+
+                    if(userId == null || tournamentId == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    val user = userService.findUserById(userId)
+                    if(user == null){
+                        call.respond(HttpStatusCode.NotFound)
+                        return@post
+                    }
+
+                    val participantAdded = tournamentService.addParticipant(
+                        tournamentId,
+                        Participant(userId = user.id, nickname = user.nickname)
+                    )
+
+                    if(!participantAdded){
+                        call.respond(HttpStatusCode.Conflict)
+                        return@post
+                    }
+
+                    if(userService.addTournamentRelation(userId, tournamentId, "JOINED")) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.Conflict)
+                }
+
+                post("/leaveTournament/{id}"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+
+                    if(userId == null || tournamentId == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    tournamentService.removeParticipant(tournamentId, userId)
+                    if(userService.removeTournamentRelation(userId, tournamentId, "JOINED")) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.NotFound)
+                }
+            }
+        }
+
+        route("/tournament"){
+            authenticate("auth-jwt"){
+                get("/getAllTournaments"){
+                    call.respond(tournamentService.getAllTournaments())
+                }
+
+                get("/getTournamentByCode/{code}"){
+                    val code = call.parameters["code"]?.toIntOrNull()
+
+                    if(code == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@get
+                    }
+
+                    val tournament = tournamentService.getTournamentByCode(code)
+                    if(tournament != null) call.respond(tournament)
+                    else call.respond(HttpStatusCode.NotFound)
+                }
+
+                post("/createTournament"){
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asLong()
+                    val tournament = call.receive<TournamentModel>()
+                    if(userId == null) {
+                        call.respond(HttpStatusCode.NotFound)
+                        return@post
+                    }
+
+                    val tournamentId = tournamentService.insertTournament(tournament)
+                    if(tournamentId > 0L) call.respond(HttpStatusCode.OK, IdModel(tournamentId))
+                    else call.respond(HttpStatusCode.BadRequest)
+                }
+
+                post("/updateTournament"){
+                    val tournament = call.receive<TournamentModel>()
+                    if(tournamentService.updateTournament(tournament)) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.NotFound)
+                }
+
+                post("/updateParticipants/{id}"){
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+                    val participants = call.receive<List<Participant>>()
+
+                    if(tournamentId == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    if(tournamentService.updateParticipants(tournamentId, participants)) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.NotFound)
+                }
+
+                post("/updateThumbnail/{id}/{thumbnail}"){
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+                    val thumbnail = call.parameters["thumbnail"]?.toIntOrNull()
+
+                    if(tournamentId == null || thumbnail == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    if(tournamentService.updateThumbnail(tournamentId, thumbnail)) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.NotFound)
+                }
+
+                delete("/deleteTournament/{id}"){
+                    val tournamentId = call.parameters["id"]?.toLongOrNull()
+
+                    if(tournamentId == null){
+                        call.respond(HttpStatusCode.BadRequest)
+                        return@delete
+                    }
+
+                    if(tournamentService.deleteTournament(tournamentId)) call.respond(HttpStatusCode.OK)
+                    else call.respond(HttpStatusCode.NotFound)
                 }
             }
         }

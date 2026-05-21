@@ -17,6 +17,26 @@ enum class TournamentType {
     OTRO
 }
 @Serializable
+data class TournamentModel(
+    var id: Long,
+    var name: String,
+    var game: String,
+    var creatorId: Long,
+    var creatorNickname: String,
+    var participantList: MutableList<Participant> = mutableListOf(),
+    var maxParticipants: Int,
+    var date: Long? = null,
+    var location: String? = null,
+    var prize: String? = null,
+    var code: Int? = null,
+    var type: TournamentType = TournamentType.ELIMINATION,
+    var tournamentStatus: TournamentStatus = TournamentStatus.EDITABLE,
+    var thumbnail: Int = 0,
+
+    var matches: MutableList<TournamentMatch> = mutableListOf()
+)
+
+@Serializable
 data class Tournament(
     var id: Long,
     var name: String,
