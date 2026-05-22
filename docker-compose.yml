@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: tourney-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Connection to MariaDB. Replace 'mariadb-service-name' with the actual service name
+      # of MariaDB in your database's docker-compose, and 'tourney_db' with your database name.
+      - DB_URL=jdbc:mariadb://mariadb-service-name:3306/tourney_db
+      - DB_USERNAME=your_db_username
+      - DB_PASSWORD=your_db_password
+      - SECRET_KEY=generate_a_long_secure_secret_key_here
+      - EXPIRATION_TIME=86400000 # 24 hours in milliseconds
+    networks:
+      - database-net
+
+networks:
+  database-net:
+    external: true
+    name: mariadb_default # Change this to the actual network name of your existing MariaDB docker-compose
