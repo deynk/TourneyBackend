@@ -18,11 +18,9 @@ import org.slf4j.LoggerFactory
 
 
 class UserService(val database: Database) {
-    private val log = LoggerFactory.getLogger("MiEndpoint")
     suspend fun create(user: NewUserModel): Long = suspendTransaction(database) {
-        if (Users.select(Users.email eq user.email).count() > 0) {
+        if (Users.select(Users.email eq user.email).any())
             return@suspendTransaction -1L
-        }
 
         val newRecord = Users.insert {
             it[nickname] = user.nickname

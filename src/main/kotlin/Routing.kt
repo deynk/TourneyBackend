@@ -8,26 +8,8 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     routing {
-        get("/") {
+        /*get("/") {
             call.respondText("Hello, World!")
-        }
-
-        get("/tournament") {
-            val tournament = Tournament(
-                1L,
-                "My tournament",
-                "My game",
-                1L,
-                "Dani",
-                MutableList<Participant>(1){ Participant(2L, 2L, "Dani", 3f) },
-                32,
-                null,
-                "Ubicación",
-                "Premio",
-                123
-            )
-
-            call.respond(tournament)
-        }
+        }*/
     }
 }

@@ -27,6 +27,7 @@ dependencies {
     implementation(ktorLibs.server.statusPages)
     implementation(libs.exposed.core)
     implementation(libs.logback.classic)
+    //implementation("io.ktor:ktor-server-static-content:${ktor_version}")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
     implementation(libs.exposed.jdbc)
     implementation("org.mindrot:jbcrypt:0.4")
